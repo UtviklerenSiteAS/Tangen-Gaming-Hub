@@ -14,10 +14,25 @@ establishment, and real encrypt/decrypt via `libsignal-android:0.86.5` — runni
 in the Android Studio emulator on the Windows dev machine, no phones required yet.
 Built and verified live against current `signalapp/libsignal` source (not
 secondary tutorials, which are largely written against older, pre-Kyber versions
-of the library and will not compile as-is). Not yet done: real device-to-device
-transport (currently both test identities run in one process), persistence of
-keys/sessions across app restarts, hardware attestation, and any UI beyond a
-proof-of-concept text screen.
+of the library and will not compile as-is).
+
+**Milestone (2026-08-13, later same session):** the app now has a real chat UI
+(message bubbles, Enter-to-send) and **persists identity keys and message history
+across restarts**, using AES-256-GCM via Android Keystore — not
+`EncryptedSharedPreferences`, which is deprecated as of `security-crypto
+1.1.0-alpha07`. One real hazard hit and resolved: on this emulator setup, the
+*first* Keystore key-generation call intermittently hung and froze the whole
+virtual device (not just the app), requiring a forced kill + Wipe Data to
+recover. Diagnosed by isolating Keystore access into its own test screen running
+off the main thread with a hard timeout — confirmed reproducible, then confirmed
+resolved after wiping the AVD. **Lesson carried forward:** any new OS-level API
+gets a small isolated test first, off the main thread, before being wired into
+the full app — not integrated directly, as happened here initially.
+
+Not yet done: real device-to-device transport (currently both test identities
+run in one process), persistence of the session/ratchet state itself (each
+launch re-runs the handshake, using the persisted identities), and hardware
+attestation.
 
 ---
 
