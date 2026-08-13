@@ -2,7 +2,7 @@
 
 **Status:** Parked concept / personal prototype. Not a committed project. Nothing
 to do with Tangen Gaming Hub — filed here only for lack of a better home.
-**Date:** 2026-08-13 (updated with owner's answers to the open questions)
+**Date:** 2026-08-13 (updated with owner's answers, incl. backend/admin architecture)
 **Origin:** Late-night idea — "flip phones with our own OS, with an ecosystem across all phones like GrapheneOS."
 
 ---
@@ -10,33 +10,35 @@ to do with Tangen Gaming Hub — filed here only for lack of a better home.
 ## 1. The idea in one line
 
 A clamshell flip phone running a hardened Android distribution we control, whose
-**own OS is the ecosystem**: an app channel exclusive to the platform, plus a
-GrapheneOS-style remote/local "burn" security layer — in a flip form factor.
+**own OS is the ecosystem** (an exclusive app channel), managed as a **fleet** from
+a self-hosted admin server, with a GrapheneOS-style local + remote "burn" layer —
+in a flip form factor.
 
 ## 2. Decisions locked so far
 
-These came out of an explicit pressure-test of the original idea. They narrow the
-concept from "build an OS for €20 burner phones" to something buildable.
+These came out of an explicit pressure-test of the original idea, plus the owner's
+answers to the open questions.
 
 | Question | Decision | Consequence |
 |---|---|---|
 | How deep does "our own OS" go? | **Custom Android distro** — fork AOSP/LineageOS, harden it, add our layer | Keeps VoLTE, app compatibility, and a realistic team size. We are not writing a kernel. |
-| Flip form factor vs. €20 price point | **Keep the flip, pay more** | Rules out the entire cheap-Chinese-burner supply chain. Changes the product from "disposable" to "deliberate." |
-| What *is* the ecosystem? | **The OS itself** — an app-sharing channel exclusive to our OS | This is the product's core. See §5. |
-| Flip-format value | **Nostalgia + statement + call privacy + metaphor** | The premium is emotional and symbolic, not spec-driven. See §7. |
+| Flip form factor vs. €20 price point | **Keep the flip, pay more** | Rules out the entire cheap-Chinese-burner supply chain. Deliberate, not disposable. |
+| What *is* the ecosystem? | **The OS itself** — an app-sharing channel exclusive to our OS | Core of the product. See §5. |
+| Flip-format value | **Nostalgia + statement + call privacy + metaphor** | Emotional/symbolic, not spec-driven. See §8. |
 | Company | **None — personal prototype** | Unrelated to Tangen Gaming Hub. Prototype first. |
-| Sell hardware, or ship a distro? | **Prototype first; maybe sell later** | Only if the prototype is good enough and the owner is satisfied. Defers the whole regulatory question (§8). |
-| What happens now | **Park as concept doc** | This document. No code, no supplier contact, no spend. |
+| Sell hardware, or ship a distro? | **Prototype first; maybe sell later** | Only if the prototype is good enough. Defers the regulatory burden (§9). |
+| **Backend / admin** | **Self-hosted Hermes Agent + local LLM, 24/7, with a device dashboard** | The "admin" that can burn a device on request. See §7. |
+| **Dashboard data model** | **Pseudonymous device tokens — no identity link vendor-side** | Minimises the honeypot and the vendor's GDPR exposure. See §7. |
+| **Who can burn?** | **Both — user-initiated by default, support/admin as backup** | Local duress stays the real defence; remote burn is a fleet convenience. See §6. |
+| **Market** | **Managed fleet (org / family), not personal privacy phones** | Central admin is *normal* here; the employer/family admin is the identity controller. See §7. |
 
 ### What was explicitly abandoned
 
-- **The €20 Chinese burner as a base.** Dead on technical grounds, not budget
-  grounds — see §3.
-- **"One-time use / disposable" as positioning.** Disposable hardware means the
-  ODM silently swaps SoC, modem and panel between production batches under the
-  same model name. You cannot maintain an OS against a moving target. The framing
-  also invites regulatory and payment-processor friction for no gain, since EU/NO
-  SIM registration applies regardless.
+- **The €20 Chinese burner as a base.** Dead on technical grounds — see §3.
+- **"One-time use / disposable" positioning.** Disposable hardware means the ODM
+  silently swaps SoC/modem/panel between batches under one model name; you cannot
+  maintain an OS against a moving target. The framing also invites regulatory and
+  payment friction for no gain (EU/NO SIM registration applies regardless).
 
 ## 3. Why the original cheap-China path fails
 
@@ -44,30 +46,26 @@ Worth recording so we don't rediscover it at 2am in six months.
 
 **The €20 flip phones are not Android.** The commodity clamshells on Alibaba run
 Unisoc T107 — a Cat.1 feature-phone chipset with roughly **48 MB RAM / 128 MB
-flash**, running a proprietary RTOS. There is no AOSP to fork. Porting an OS here
-means *writing* one against undocumented Unisoc blobs, with no chipset SDK access
-(vendors gate that behind NDAs and 1000+ unit commitments).
+flash**, running a proprietary RTOS. There is no AOSP to fork. Porting here means
+*writing* an OS against undocumented Unisoc blobs, with no chipset SDK access
+(NDA-gated behind 1000+ unit commitments).
 
 **The cheap hackable Android devices aren't flips.** The Qin F21 Pro (MTK6761,
-3 GB/32 GB, ~$113) is a real Android device, but it is a candybar keypad phone at
-5× the target price.
+3 GB/32 GB, ~$113) is real Android, but a candybar keypad phone at 5× the target price.
 
-**Neither can relock.** GrapheneOS's security model is hardware-rooted: it writes
-its own signing keys into the Pixel's Titan M2 secure element and **relocks the
-bootloader**, preserving verified boot under a non-Google OS. Cheap hardware
-offers either a bootloader that never unlocks, or one that unlocks and never
-relocks. A permanently-unlocked device boots unverified forever — anyone with a
-USB cable and a minute alone with it can flash the boot partition. Shipping that
-while invoking GrapheneOS's name would be a security claim we cannot honour.
+**Neither can relock.** GrapheneOS's security is hardware-rooted: it writes its own
+signing keys into the Pixel's Titan M2 secure element and **relocks the bootloader**,
+preserving verified boot under a non-Google OS. Cheap hardware either never unlocks,
+or unlocks and never relocks. A permanently-unlocked device boots unverified forever —
+anyone with a USB cable and a minute alone with it can flash the boot partition.
 
-**VoLTE is the silent killer.** With 2G/3G shutdowns, calls ride VoLTE, which is
-carrier-certified *per device and per firmware build*. A custom OS build can lose
-the ability to place a phone call on Telenor/Telia. This ends more custom-ROM
-phone projects than any other single cause.
+**VoLTE is the silent killer.** With 2G/3G shutdowns, calls ride VoLTE, certified
+*per device and per firmware build*. A custom OS build can lose the ability to place
+a call on Telenor/Telia. This ends more custom-ROM phone projects than anything else.
 
-**MediaTek/Unisoc kernel sources.** Both routinely ship without public kernel
-source, forcing reverse-engineered blobs. This is the standard reason cheap
-devices never get sustained LineageOS support.
+**MediaTek/Unisoc kernel sources.** Both routinely ship without public kernel source,
+forcing reverse-engineered blobs — the standard reason cheap devices never get
+sustained LineageOS support.
 
 ## 4. Hardware landscape (as of Aug 2026)
 
@@ -75,196 +73,188 @@ devices never get sustained LineageOS support.
 |---|---|---|---|---|
 | Unisoc T107 clamshell (Alibaba, MOQ 20) | ~$22 | Yes | No | **Dead.** 48 MB RAM, RTOS, no AOSP |
 | Qin F21 Pro (MTK6761) | ~$113 | No | No | Hackable, but wrong form factor |
-| Samsung Galaxy Z Flip 3/4 (refurb) | Varies | Yes | No (unlock only) | **Closing window** — see below |
+| Samsung Galaxy Z Flip 3/4 (refurb) | Varies | Yes | No (unlock only) | **Closing window** — prototype mule only |
 | Motorola Razr (2027, GrapheneOS-partnered) | TBD | Yes | **Expected yes** | **The strategic target** |
 | Used Pixel 6a/7a + GrapheneOS | €100–150 | No | Yes | The honest benchmark we must beat |
 
 **Samsung is a shrinking window.** Unofficial LineageOS 22 exists for the Z Flip 3
-(`b2q`), so a refurb Z Flip 3/4 is the only Android flip we could realistically
-build on *today*. But Samsung is removing the OEM-unlock toggle from Developer
-Options in One UI 8, so this path has an expiry date and no relock at any point.
-Viable as a **prototype mule**, not as a product.
+(`b2q`), so a refurb is the only Android flip we could realistically build on *today* —
+but Samsung is removing the OEM-unlock toggle in One UI 8, and there's no relock at
+any point. Viable as a **prototype mule**, not a product.
 
-**The benchmark to beat.** If the goal is simply "cheap secure phone," a used
-Pixel 6a at €100–150 runs real GrapheneOS today with relock, secure element and
-actual security patches. Any version of this project must answer: *what do we
-offer that a refurbished Pixel does not?* Answer (§7): the flip form factor, the
-exclusive app ecosystem (§5), and the burn layer (§6).
+**The benchmark to beat.** For "cheap secure phone" alone, a used Pixel 6a runs real
+GrapheneOS today. What we offer instead: the flip form factor, the exclusive app
+channel (§5), the burn layer (§6), and fleet manageability (§7).
 
 ## 5. The ecosystem, concretely
 
 **Owner's answer:** *"The ecosystem is the phones' own OS, where users can share
 apps exclusively for our new OS."*
 
-So this is **an app-distribution channel that only exists on our OS** — closer to
-F-Droid's model than to an Apple ecosystem: a repository/store where users publish
-and install apps, but scoped to the platform. That makes the OS itself the network
-effect. Two honest engineering notes:
+An **app-distribution channel that only exists on our OS** — closer to F-Droid than
+to Apple: a repository where apps are published and installed, scoped to the platform,
+so the OS itself is the network effect. Two engineering notes:
 
-- **"Exclusive to our OS" needs an enforcement mechanism.** A forked Android runs
-  ordinary APKs, so nothing *technically* stops those apps from running elsewhere
-  unless we add gating. The clean way to enforce it is **remote attestation** — the
-  same primitive GrapheneOS ships as *Auditor*: an app can cryptographically
-  verify it is running on a genuine, unmodified instance of our OS before it will
-  run or unlock features. That is what turns "apps for our OS" from a slogan into
-  a real, non-copyable property. It also happens to be the exact thing the burn
-  layer (§6) and the hardware relock (§4) make trustworthy.
-- **This is really two products.** (a) The OS, and (b) an app store / dev channel
-  with its own signing, review, and hosting. (b) is a standing operational
-  commitment — moderation, malware scanning, takedowns — not a one-off build.
+- **"Exclusive to our OS" needs enforcement.** A forked Android runs ordinary APKs,
+  so nothing technically locks them to us without gating. The clean mechanism is
+  **remote attestation** (GrapheneOS's *Auditor* primitive): an app cryptographically
+  verifies it's on a genuine, unmodified instance of our OS before running. That's
+  what makes exclusivity real. It also dovetails with the admin server's attestation
+  needs (§7).
+- **It's really two products:** (a) the OS, and (b) an app store with signing,
+  moderation, malware scanning, takedowns and hosting — a standing operation.
 
-**This half needs zero custom hardware.** A curated repo + an attestation check
-can be prototyped on stock Android first. That's the recommended starting point,
-because it proves the valuable, defensible part of the idea before any phone is
-touched.
+**Needs zero custom hardware** — prototype the repo + attestation on stock Android first.
 
 ## 6. The "burn" security layer
 
-**Owner's idea:** fork/build the OS and add a remote-wipe kill switch — e.g. a
-*burn PIN*, or an **admin phone number** that sends a decoy "verification code
-with STOP-to-opt-out." If the user replies with the code or `STOP`, or the admin
-pushes a device ID / some catchable notification to the phone, the device **burns
-all data**, GrapheneOS-style.
+**Owner's idea:** a remote-wipe kill switch — a *burn PIN*, or an admin channel that
+signals the device to **burn all data**, GrapheneOS-style. Resolved model:
 
-The instinct is right, and part of it is already proven. Split it in two:
+**Local duress — the real defence, build first.** GrapheneOS already ships this and
+it's the strong version:
+- **Duress PIN/password:** a secret alternate PIN instantly, irreversibly wipes the
+  device (crypto-erase — deletes the keys, near-instant).
+- **Auto-wipe on failed attempts**, and **auto-reboot to Before-First-Unlock** after
+  inactivity, so a seized phone returns to encrypted-at-rest.
+Works **offline**, can't be blocked by an attacker, needs no central party.
 
-**Local duress — proven, build this first.** GrapheneOS already ships exactly this
-pattern and it's the strong version:
-- **Duress PIN/password:** entering a secret alternate PIN instantly and
-  irreversibly wipes the device (deletes the encryption keys — a "crypto-erase,"
-  near-instant, not a slow overwrite).
-- **Auto-wipe on failed attempts**, and **auto-reboot to Before-First-Unlock**
-  after inactivity, so a seized phone returns to a state where its data is
-  encrypted at rest.
-These work **offline**, can't be blocked by an attacker, and don't depend on a
-central party. This is the safe core of the burn idea.
+**Remote burn — the fleet backup (owner: "both").** In a managed fleet the "support"
+that triggers a remote burn is the **fleet admin console**, authenticated as the
+organisation — not an anonymous caller, which removes most of the social-engineering
+surface. Design rules that still apply:
+1. **The trigger must be cryptographically signed** with a pre-shared key the device
+   verifies — never trust in an SMS sender-ID string (spoofable → a DoS weapon).
+2. **It's network-dependent**, so it can't touch an off / airplane / Faraday / no-signal
+   phone. It complements local duress; it never replaces it.
+3. **Every burn is audit-logged** (who authorised, when) for GDPR accountability and
+   abuse investigation.
 
-**Remote burn — useful, but treat it as secondary, and design it carefully.** A
-remote trigger is genuinely valuable for a *fleet* (org- or family-issued phones,
-i.e. MDM-style remote wipe, which already exists on Android). The decoy
-"looks-like-spam verification code" is a clever bit of **plausible deniability** —
-an adversary inspecting the phone doesn't recognise the kill switch. But the raw
-mechanism as sketched has three problems that must be designed out:
+**Hard rule:** the LLM (§7) must **never** be in the authorization path for a burn.
+It may triage and queue; a human with strong authentication approves. A probabilistic
+model must not be able to trigger an irreversible destructive action.
 
-1. **Plain SMS is spoofable.** If the trigger is "an SMS from the admin number,"
-   anyone who spoofs that sender ID (cheap and common) can wipe victims at will —
-   a denial-of-service weapon. The trigger **must be cryptographically signed**
-   with a pre-shared key the phone verifies, not trust in a caller-ID string.
-2. **It's network-dependent, so it fails exactly when you need it.** Phone off,
-   airplane mode, Faraday bag, or no signal at a border/seizure — the message
-   never arrives. Remote wipe can *complement* local duress but must never be the
-   only line. (This is *why* GrapheneOS leans on local + dead-man-timer wipes.)
-3. **The admin is a single point of coercion.** Whoever controls the admin number
-   can be compelled — legally or physically — to wipe, or to *not* wipe. That's
-   fine and expected for a managed fleet; it's a trust downgrade for a personal
-   privacy phone. **Decide which product this is**, because the answer changes the
-   whole design.
+## 7. Backend — the admin server (Hermes Agent + local LLM)
 
-**Net:** ship local duress PIN + auto-wipe timer as the real security (offline,
-unblockable), and offer signed, opt-in remote wipe as a fleet feature layered on
-top — never as the primary defence.
+**Owner's design:** a self-hosted **Hermes Agent with a local LLM running 24/7 on a
+private Linux server**, with a **dashboard over all phones and IMEIs**. This is the
+"admin" that can burn a device via support when a user needs it. GDPR is to be
+followed fully.
 
-## 7. Why a flip — the premium is emotional
+**The self-hosting instinct is right.** A *local* LLM keeps support data on your own
+server instead of a third-party API — genuinely privacy-preserving, and it sidesteps
+GDPR data-transfer questions. Good call. Three things make it hold together:
 
-**Owner's answer:** *nostalgia, propaganda, conversation privacy, and metaphor.*
-Unpacked, these are four distinct pillars — and notably none of them is a spec, so
-the flip doesn't have to win on hardware:
+### 7.1 The data model that reconciles the answers
+The three answers (pseudonymous tokens · fleet · both-wipe) are consistent **if the
+identity split is done right**:
+- **Vendor side (you):** the dashboard holds **pseudonymous device tokens** + IMEI +
+  attestation/health state — **no link to a named person.** You are a **data
+  processor** holding pseudonymous data. Small honeypot.
+- **Fleet admin side (employer/family):** holds the **token ↔ person** mapping and is
+  the **data controller**. They authenticate and request a burn for *their* device.
+This pushes the heavy GDPR role (identity controller) to the organisation and keeps
+your server minimal — the single best decision for both privacy and liability.
 
-- **Nostalgia** — the tactile open/close, the Y2K/keitai revival that's already a
-  live consumer trend.
-- **Statement / "propaganda"** — the phone as a visible position: anti-surveillance,
-  digital-minimalism, a thing you're *seen* using. Brand as message.
-- **Conversation privacy** — the physical shell and mic placement as a real, felt
-  privacy gesture; closing the phone ends the call and covers the mic.
-- **Metaphor** — the act of *closing* the device as the embodiment of "closing
-  off," disconnecting, going dark. The form literally performs the product's
-  promise.
+### 7.2 "GDPR 100%" — the load-bearing obligations
+- **IMEI + device registry is personal data** even pseudonymised (re-identifiable) →
+  **records of processing (art. 30)**, **security of processing (art. 32)**.
+- **DPIA (art. 35) almost certainly required** — remote wipe + fleet tracking is
+  high-risk. Do it before launch, not after.
+- **Data minimisation (art. 5):** hold only what a burn/health check needs. No
+  location, no content, no more than the token + IMEI + status.
+- **Right to erasure (art. 17)** applies to the dashboard itself.
+- **Breach notification (art. 33/34):** a leaked dashboard is catastrophic → 72-hour
+  clock. The server is now the crown-jewel target; harden and isolate it accordingly.
+- **The server is a single point of failure/compromise.** If it's down, users must
+  still be protected — which they are, because **local duress works offline** (§6).
 
-That's a coherent and genuinely differentiated pitch versus a refurb Pixel. It
-leans on design, story and symbolism — which is the right place for a small team
-to compete, since it can't out-spec Google.
+### 7.3 Legal-compulsion reality
+A central registry + kill switch is **discoverable and compellable**: a court can
+order you to burn, *not* burn, or hand over the dashboard. The pseudonymous split
+(7.1) limits what you *can* be compelled to reveal — you literally don't hold the
+identities. That's a feature, keep it.
 
-## 8. Costs and obligations (deferred by "prototype first")
+## 8. Why a flip — the premium is emotional
 
-Because the decision is **prototype now, maybe sell later**, none of this is due
-yet — but it's the price of the "sell it" branch, recorded so it isn't a surprise:
+**Owner's answer:** *nostalgia, propaganda (statement), conversation privacy, metaphor.*
+Four distinct pillars, none of them a spec — so the flip needn't win on hardware:
 
-Selling a device with our OS in the EU/Norway makes **us** the legal
-manufacturer — replacing the OS voids the ODM's conformity assessment. That pulls
-in CE marking, the RED directive (including cybersecurity requirements mandatory
-since Aug 2025), RoHS, WEEE registration, and the incoming Cyber Resilience Act.
-Plus carrier VoLTE certification per firmware build, a standing commitment to ship
-security patches for the device's supported life, and — new from §5 — running an
-app store (moderation, malware scanning, takedowns) as an ongoing operation.
+- **Nostalgia** — the tactile open/close; the Y2K/keitai revival already trending.
+- **Statement** — the phone as a visible position (anti-surveillance, minimalism);
+  brand as message.
+- **Conversation privacy** — the shell and mic placement as a real, felt privacy
+  gesture; closing the phone ends the call.
+- **Metaphor** — *closing* the device embodies "going dark"; the form performs the promise.
 
-**The cheaper branch:** ship a **distro users flash themselves**, plus the app
-repo. That avoids nearly all of the manufacturer burden above and matches how
-GrapheneOS itself operates. Worth keeping open even if "sell hardware" is the
-dream, because it's a viable v1.
+*Fleet note:* for a managed fleet (work/family), the weight shifts toward **focus /
+digital-wellbeing and control**; the "statement" and "metaphor" pillars matter more
+for a consumer edition, if one ever follows.
 
-**Comparables:** Light Phone, Punkt, Mudita and Minimal Phone each did
-"minimal phone + custom OS." All took years and millions; all sell at $300–800;
-several nearly died on firmware. Any plan that assumes a shorter path needs to
-say explicitly why.
+## 9. Costs and obligations (deferred by "prototype first")
 
-## 9. Phased approach
+Selling a device with our OS in the EU/EEA makes **us** the manufacturer — replacing
+the OS voids the ODM's conformity assessment. That pulls in CE marking, the RED
+directive (cybersecurity requirements mandatory since Aug 2025), RoHS, WEEE, and the
+incoming Cyber Resilience Act. Plus VoLTE certification per firmware build, a standing
+security-patch commitment, running the app store (§5), and operating the admin server
+as GDPR-critical infrastructure (§7).
 
-**Phase 0 — Build the ecosystem + local burn on stock Android (no custom hardware).**
-This is now the concrete first step, because the two defining features don't need
-a special phone:
-- The **exclusive app channel**: a curated repo with its own signing, plus an
-  **attestation check** so apps can confirm they're on a genuine instance of our OS.
-- The **local burn**: duress PIN + auto-wipe timer, prototyped on a standard
-  hardened Android build.
-Proves the valuable, defensible half first, on hardware you already own.
+**The cheaper branch:** ship a **flashable distro + app repo + optional self-hosted
+admin server**, and let organisations run their own fleet server. That avoids most of
+the manufacturer burden *and* means the identity data never touches you at all.
+
+**Comparables:** Light Phone, Punkt, Mudita, Minimal Phone each did "minimal phone +
+custom OS." All took years and millions; all sell at $300–800; several nearly died on
+firmware. Any plan assuming a shorter path must say why.
+
+## 10. Phased approach
+
+**Phase 0 — Ecosystem + local burn + admin skeleton on stock Android (no custom hw).**
+- The **exclusive app channel**: curated repo with signing + an **attestation check**.
+- The **local burn**: duress PIN + auto-wipe timer.
+- The **admin server skeleton**: Hermes Agent + local LLM doing support triage only,
+  dashboard holding **pseudonymous tokens**, with a **human-gated, signed** burn path.
+Proves the defensible core on hardware you already own.
 
 **Phase 1 — Distro prototype on a flip mule.**
-Refurb Z Flip 3 (`b2q`) + LineageOS 22 as the development mule. Goal is learning
-what a hardened flip UX actually wants — outer-display behaviour, hinge states,
-keypad/touch interaction — and how the §7 pillars feel in the hand. Throwaway
-hardware, deliberately.
+Refurb Z Flip 3 (`b2q`) + LineageOS 22. Learn what a hardened flip UX wants — outer
+display, hinge states, keypad/touch — and how the §8 pillars feel in the hand.
 
 **Phase 2 — Align to the 2027 platform.**
-If the Motorola/GrapheneOS report verifies (§10), target that generation.
-Relockable bootloader + MTE + a vendor with an actual security-update pipeline
-solves every blocker in §3 at once — and makes the §5 attestation and §6 remote
-burn genuinely trustworthy.
+If the Motorola/GrapheneOS report verifies (§11), target that generation. Relockable
+bootloader + MTE + a real security-update pipeline makes the §5 attestation and §6/§7
+remote burn genuinely trustworthy.
 
-## 10. The strategic opening (still needs verifying)
+## 11. The strategic opening (still needs verifying)
 
-Multiple outlets reported (March 2026) that **Motorola and the GrapheneOS
-Foundation entered a long-term partnership** — GrapheneOS's first expansion beyond
-Pixel. Reported details:
-
-- Motorola's **2026** devices do **not** meet requirements; **2027** devices are
-  being engineered to.
+Multiple outlets reported (March 2026) that **Motorola and the GrapheneOS Foundation
+entered a long-term partnership** — GrapheneOS's first expansion beyond Pixel:
+- Motorola's **2026** devices don't meet requirements; **2027** devices are being
+  engineered to.
 - Missing today: relockable bootloader with custom keys, and hardware **memory
   tagging (MTE)**.
-- Named initial targets include the **Motorola Signature, Razr Ultra and Razr
-  Fold**.
+- Named initial targets: **Motorola Signature, Razr Ultra, Razr Fold**.
 
-> **Confidence: medium — still not verified at source.** This is assembled from
-> search-result snippets. The primary sources (grapheneos.org, phonearena,
-> makeuseof) are blocked by this environment's egress proxy and were **not** read
-> directly. The owner's "fork or build our own + add a burn layer" answer means
-> we're less strictly dependent on Motorola — but a relockable flip is still the
-> ideal base, so **verify at source before this influences any spend.**
+> **Confidence: medium — still not verified at source.** Assembled from search
+> snippets; grapheneos.org, phonearena and makeuseof are blocked by this environment's
+> egress proxy and were **not** read directly. Verify before this drives any spend.
 
-## 11. Remaining open questions
+## 12. Remaining open questions
 
-1. **Fleet or personal?** The remote-burn admin model (§6) and the attestation
-   model (§5) both hinge on this. A managed fleet makes a central admin normal; a
-   personal privacy phone makes it a liability. This is now the top question.
-2. **Attestation without a secure element?** On Phase-0/Phase-1 hardware (no
-   relock, no Titan-equivalent) attestation is soft and spoofable. Is "real" OS
-   exclusivity only achievable on the 2027 relockable hardware?
-3. Does the Motorola × GrapheneOS report verify at source? (§10)
-4. App-store operations: who moderates, scans, and handles takedowns — and is
-   there appetite to run that indefinitely? (§5)
-5. If it ever sells: hardware, or **flashable distro + repo** (the far cheaper,
-   lower-liability path)? (§8)
+1. **Attestation without a secure element.** On Phase-0/1 hardware (no relock, no
+   Titan-equivalent) attestation is soft and spoofable. Is real OS-exclusivity only
+   achievable on the 2027 relockable hardware?
+2. **Fleet-admin authentication.** How does the fleet admin authenticate to trigger a
+   backup burn — hardware key, mTLS, signed token? (Determines the abuse surface.)
+3. **Who runs the admin server** in the sell-it branch — you (processor), or each
+   organisation self-hosts (you touch no data)? The second is far cleaner.
+4. Does the Motorola × GrapheneOS report verify at source? (§11)
+5. App-store operations: who moderates, scans, and handles takedowns long-term? (§5)
+6. If it ever sells: hardware, or **flashable distro + repo + self-host admin** (the
+   cheaper, lower-liability path)? (§9)
 
-## 12. Sources
+## 13. Sources
 
 - [Unisoc T107 product page](https://www.unisoc.com/en/product/FeaturePhoneUS/T107)
 - [Unisoc T107 clamshell, Alibaba (~$22, MOQ 20)](https://www.alibaba.com/product-detail/Unisoc-T107-chipset-4G-senior-phone_1600302854389.html)
