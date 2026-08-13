@@ -133,14 +133,50 @@ the prototype, so there is a clear common understanding:
 Motorola × GrapheneOS 2027 report holds up — it's from search snippets, and the
 primary sources were blocked here. Verify at source before any production spend.
 
-## 7. So, tomorrow
+## 7. Dev environment — Windows is fine for Phase 0
+
+**Phase 0 needs no Linux at all.** Two separate pieces, two separate stacks:
+
+- **Messenger app (v0):** ordinary Android app development. **[Android Studio](https://developer.android.com/studio)**
+  on Windows — Win64, 8 GB RAM minimum (16 GB recommended), 8 GB disk. Bundles JDK
+  + Kotlin, nothing else to install. Add Signal's own Maven repo (their artifacts
+  aren't all on Maven Central) and the Android binding:
+  ```kotlin
+  repositories {
+      maven {
+          name = "SignalBuildArtifacts"
+          url = uri("https://build-artifacts.signal.org/libraries/maven/")
+      }
+  }
+  dependencies {
+      implementation("org.signal:libsignal-android:0.86.5")
+  }
+  ```
+  `libsignal-android` ships native libs for `arm64-v8a`, which matches the Redmi 13C.
+- **Admin dashboard:** lives on the **Njalla box**, which is already Linux — but it's
+  plain web development, not an OS build. Recommended: **Python + FastAPI + SQLite**
+  (simple, and pairs well with Ollama's Python client for LLM triage). Write it on
+  Windows in VS Code with the **Remote-SSH** extension pointed at the Njalla server —
+  you edit directly on the box, no local Linux VM needed.
+
+**Building the actual AOSP/LineageOS fork (Phase 1) is a different animal — deferred
+on purpose.** Confirmed against the current LineageOS wiki: today's branch
+(lineage-21+) needs **64 GB RAM and 400 GB disk**, SSD strongly recommended. That
+doesn't fit a typical Windows laptop even via WSL2. When Phase 1 actually starts,
+the practical move is a **rented Linux build box in the cloud, paid by the hour**
+for the build window — not a local WSL2/dual-boot setup fought against undersized
+hardware. Nothing to set up for this yet.
+
+## 8. So, tomorrow
 
 1. Order **2× Redmi 13C** from a prisjakt listing (~2 600 NOK). *(Optional: grab
    the cables + a prepaid SIM.)*
 2. Create a **Mi account** today so the 30-day unlock clock is running for Phase 1.
-3. On your **Njalla** server: install Ollama + a small model, and stand up a bare
-   dashboard that stores only pseudonymous tokens.
-4. Start **Messenger v0** on stock Android across the two phones.
+3. Install **Android Studio** on your Windows machine and get "Hello World" running
+   on a Redmi 13C over USB, to prove the toolchain before writing messenger logic.
+4. On your **Njalla** server: install Ollama + a small model, and stand up a bare
+   FastAPI dashboard that stores only pseudonymous tokens.
+5. Start **Messenger v0** on stock Android across the two phones.
 
 That's a complete, honest first step for well under 5 000 NOK — proving the
 software that makes this platform worth building, before a single krone goes to
