@@ -31,6 +31,9 @@ answers to the open questions.
 | **Dashboard data model** | **Pseudonymous device tokens — no identity link vendor-side** | Minimises the honeypot and the vendor's GDPR exposure. See §7. |
 | **Who can burn?** | **Both — user-initiated by default, support/admin as backup** | Local duress stays the real defence; remote burn is a fleet convenience. See §6. |
 | **Market** | **Managed fleet (org / family), not personal privacy phones** | Central admin is *normal* here; the employer/family admin is the identity controller. See §7. |
+| **Flagship app** | **A closed, attestation-gated messenger on libsignal** | "Signal on steroids," exclusive to genuine-OS devices. See §5.1. |
+| **Messenger network** | **Closed — only our phones talk to each other** | Sybil/spam/bot-proof; air-gapped from outside (a feature for a fleet). |
+| **Messenger identity** | **Attested device key + username/QR — no phone numbers** | Fixes Signal's weakest point; matches the number-independent design. |
 
 ### What was explicitly abandoned
 
@@ -105,6 +108,52 @@ so the OS itself is the network effect. Two engineering notes:
   moderation, malware scanning, takedowns and hosting — a standing operation.
 
 **Needs zero custom hardware** — prototype the repo + attestation on stock Android first.
+
+### 5.1 Flagship app — the messenger
+
+The app that makes the platform worth owning: **"Signal on steroids," exclusive to
+these phones.** Owner's framing: ordinary APKs are fine as long as they don't break
+OpSec, plus an in-APK check for the OS. Resolved design:
+
+- **Built on libsignal (Signal Protocol) — not home-grown crypto, and not a naive
+  Signal fork.** Message encryption is a *solved* problem; reinventing it is how you
+  ship a vulnerability. (A rebranded Signal app also runs into AGPL + trademark +
+  their explicit dislike of forks — build on the protocol library instead.)
+- **The "in-APK OS check" alone is security theater.** A check compiled into the APK
+  is patchable in minutes and a modified OS can simply lie to it. The real mechanism
+  is **hardware-backed remote attestation** (GrapheneOS *Auditor* / Android Key
+  Attestation): the secure element signs a challenge proving genuine, unmodified OS,
+  and **the server verifies it** — the client never self-certifies. **Consequence:
+  strong exclusivity exists only on secure-element + relock hardware (the 2027
+  target); on the prototype mule it is soft/best-effort.**
+- **Registration is attestation-gated** → only genuine-OS devices can join. This is
+  the actual killer feature and it's a *real* security property, not marketing: a
+  **Sybil-free, spam-free, bot-free** network. It fits the fleet model exactly — only
+  issued devices are on the network.
+- **Closed network (owner's choice):** members only message other attested devices —
+  air-gapped from the outside, which for a work/family fleet is a feature, not a gap.
+  Attestation then guarantees *both* parties are genuine devices. No bridge.
+- **Identity = attested device key + username/QR, no phone numbers** (owner's choice).
+  Fixes Signal's weakest point (number = identity, tied to SIM registration) and
+  matches the number-independent, de-Googled design.
+- **"On steroids" means metadata, not more encryption.** Content is already maximally
+  protected; the frontier is *who talks to whom, when*. So: sealed sender, a server
+  that stores nothing, disappearing-by-default, and **burn-layer integration** — the
+  duress PIN (§6) wipes message history as part of the crypto-erase.
+- **Ordinary third-party APKs stay allowed, but lean hard on the OS sandbox** —
+  network permission off by default, storage scopes, no background — so a random APK
+  can't undo what the messenger protects.
+
+**OpSec landmines to design around:**
+- **The attestation handshake is itself a fingerprint** — a network observer sees
+  "this device speaks our protocol" and can label it as one of these phones.
+  Exclusivity leaks membership. Make traffic look generic (standard TLS, no bespoke
+  ports/patterns).
+- **Push notifications** are a metadata channel, and a de-Googled OS can't use FCM —
+  you need self-hosted push (a WebSocket keep-alive), which costs battery and still
+  reveals "device online, receiving." An open design question (§12).
+- **A closed network still leaks the social graph** via traffic analysis even without
+  content. The self-hosted server (§7) is the metadata target — store the minimum.
 
 ## 6. The "burn" security layer
 
@@ -243,15 +292,19 @@ entered a long-term partnership** — GrapheneOS's first expansion beyond Pixel:
 ## 12. Remaining open questions
 
 1. **Attestation without a secure element.** On Phase-0/1 hardware (no relock, no
-   Titan-equivalent) attestation is soft and spoofable. Is real OS-exclusivity only
+   Titan-equivalent) attestation is soft and spoofable — which also makes the
+   messenger's "only genuine devices" guarantee soft. Is real OS-exclusivity only
    achievable on the 2027 relockable hardware?
-2. **Fleet-admin authentication.** How does the fleet admin authenticate to trigger a
+2. **Push transport for the messenger.** No FCM on a de-Googled OS → self-hosted
+   WebSocket push, at a battery + "device online" metadata cost. What's the
+   acceptable trade, and can it be batched/coalesced to leak less?
+3. **Fleet-admin authentication.** How does the fleet admin authenticate to trigger a
    backup burn — hardware key, mTLS, signed token? (Determines the abuse surface.)
-3. **Who runs the admin server** in the sell-it branch — you (processor), or each
+4. **Who runs the admin server** in the sell-it branch — you (processor), or each
    organisation self-hosts (you touch no data)? The second is far cleaner.
-4. Does the Motorola × GrapheneOS report verify at source? (§11)
-5. App-store operations: who moderates, scans, and handles takedowns long-term? (§5)
-6. If it ever sells: hardware, or **flashable distro + repo + self-host admin** (the
+5. Does the Motorola × GrapheneOS report verify at source? (§11)
+6. App-store operations: who moderates, scans, and handles takedowns long-term? (§5)
+7. If it ever sells: hardware, or **flashable distro + repo + self-host admin** (the
    cheaper, lower-liability path)? (§9)
 
 ## 13. Sources
