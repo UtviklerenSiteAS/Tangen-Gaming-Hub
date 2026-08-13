@@ -8,6 +8,17 @@ attested messenger — starting as a lean prototype you can begin this week.*
 **Full technical detail:** see [`flip-phone-os-concept.md`](./flip-phone-os-concept.md).
 This document is the clean introduction + the "buy it tomorrow" budget.
 
+**Milestone (2026-08-13):** the messenger's cryptographic core is proven working
+end-to-end — identity keys, EC + Kyber (post-quantum) pre-keys, session
+establishment, and real encrypt/decrypt via `libsignal-android:0.86.5` — running
+in the Android Studio emulator on the Windows dev machine, no phones required yet.
+Built and verified live against current `signalapp/libsignal` source (not
+secondary tutorials, which are largely written against older, pre-Kyber versions
+of the library and will not compile as-is). Not yet done: real device-to-device
+transport (currently both test identities run in one process), persistence of
+keys/sessions across app restarts, hardware attestation, and any UI beyond a
+proof-of-concept text screen.
+
 ---
 
 ## 1. What this is
